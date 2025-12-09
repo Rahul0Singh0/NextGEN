@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { aiResponse } from '../apis/generate.js';
+import { aiResponse, streamAiResponse } from '../apis/generate.js';
 
 function Generator() {
   const [prompt, setPrompt] = useState('');
@@ -7,26 +7,58 @@ function Generator() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault(); 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault(); 
     
-    setResult('');
+  //   setResult('');
+  //   setError(null);
+
+  //   if (!prompt.trim()) {
+  //     setError('Please enter a prompt.');
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     const response = await streamAiResponse({ prompt });
+
+  //     setResult(response.generatedText);
+  //   } catch (err) {
+  //     console.error('API Error:', err);
+  //     setError('Failed to generate content. Please check the backend server.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setResult(''); // Clear previous result
     setError(null);
+    setIsLoading(true);
 
     if (!prompt.trim()) {
       setError('Please enter a prompt.');
+      setIsLoading(false);
       return;
     }
-
-    setIsLoading(true);
+    
+    // Function to append new chunks to the result state
+    const handleChunk = (chunk) => {
+      setResult(prev => prev + chunk);
+    };
 
     try {
-      const response = await aiResponse({ prompt });
-
-      setResult(response.generatedText);
-    } catch (err) {
-      console.error('API Error:', err);
-      setError('Failed to generate content. Please check the backend server.');
+      await streamAiResponse(
+        { prompt }, 
+        handleChunk, 
+        (errorMessage) => setError(errorMessage) // Handle errors passed from API helper
+      );
+    } catch (error) {
+        console.log('API Error:', error);
+        // Errors caught here are network errors or errors thrown in the helper
+        setError("Network error or failed to start stream.");
     } finally {
       setIsLoading(false);
     }
