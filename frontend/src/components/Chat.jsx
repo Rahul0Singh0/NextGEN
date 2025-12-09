@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatList from './ChatList'; 
 import { streamChatContent, fetchChatHistory, fetchChatSessions, deleteChatSession } from '../apis/chatApi'; 
 
+// Helper function to create a simple unique ID
 const generateSessionId = () => {
     return 'chat-' + Date.now() + Math.random().toString(36).substring(2, 9);
 };
 
+// --- CHAT COMPONENT ---
 function Chat() {
     
     const [currentPrompt, setCurrentPrompt] = useState('');
-    const [sessionId, setSessionId] = useState(null); // Start as NULL to prevent auto-load
+    const [sessionId, setSessionId] = useState(null); 
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -20,6 +22,8 @@ function Chat() {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+
+    // --- Core Data Fetching Functions ---
 
     const loadChatList = async () => {
         const list = await fetchChatSessions();
@@ -32,15 +36,14 @@ function Chat() {
         scrollToBottom();
     };
 
+    // --- Effect Hooks ---
+
+    // Initial setup: Only load the list of sessions. 
     useEffect(() => {
         loadChatList(); 
-        
-        // Optional: Ensure localStorage is clean on initial mount if we want to force a new start
-        // localStorage.removeItem('chatSessionId');
-        
-        // We DO NOT call setSessionId(currentId) here.
     }, []);
 
+    // Load history ONLY when sessionId state changes (user clicks)
     useEffect(() => {
         if (sessionId) {
             loadChatHistory(sessionId);
@@ -50,52 +53,45 @@ function Chat() {
     // Scroll to bottom whenever messages are updated
     useEffect(scrollToBottom, [messages]);
 
+    // --- Action Handlers ---
 
-    // Handles selecting an existing chat or starting a new one
     const handleSelectChat = (newId) => {
         setError(null);
 
         if (newId === 'new') {
-            // Start a brand new session
             const newSessionId = generateSessionId(); 
             localStorage.setItem('chatSessionId', newSessionId);
-            setMessages([]); // Clear messages immediately
-            setSessionId(newSessionId); // Set ID, which triggers history fetch (empty history)
+            setMessages([]); 
+            setSessionId(newSessionId); 
             setCurrentPrompt('');
         } else if (newId !== sessionId) {
-            // Switch to an existing chat
             localStorage.setItem('chatSessionId', newId);
             setSessionId(newId); 
-            // The history will load via the useEffect [sessionId] dependency
         }
     };
 
-    // Handles deleting a chat session
     const handleDeleteChat = async (idToDelete) => {
         if (!window.confirm("Are you sure you want to delete this chat history?")) return;
 
         try {
             await deleteChatSession(idToDelete); 
 
-            // If the deleted chat was the current one, deselect it
             if (idToDelete === sessionId) {
-                setSessionId(null); // Deselect the chat
-                setMessages([]);    // Clear the chat panel
+                setSessionId(null); 
+                setMessages([]);    
                 localStorage.removeItem('chatSessionId');
             }
             
-            loadChatList(); // Refresh the list after deletion
+            loadChatList(); 
         } catch (error) {
             setError(error.message || "Failed to delete chat.");
         }
     };
 
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         
         const userPrompt = currentPrompt.trim();
-        // Check if a session is active before submitting
         if (!userPrompt || isLoading || !sessionId) return; 
         
         setError(null);
@@ -133,13 +129,16 @@ function Chat() {
                 return finalMessages;
             });
             setIsLoading(false);
-            loadChatList(); // Refresh list to update the title/timestamp of the current chat
+            loadChatList(); 
         }
     };
     
+    // --- Render ---
     return (
-        <div style={{ display: 'flex', height: '100vh', margin: '0 auto', maxWidth: '1200px', border: '1px solid #ccc', borderRadius: '8px' }}>
+        // Main Container: d-flex, 100vh height, max width, margin auto, border/rounded
+        <div className="d-flex vh-100 mx-auto border border-secondary rounded-3" style={{ maxWidth: '1200px' }}>
             
+            {/* 1. Chat List Sidebar */}
             <ChatList 
                 sessions={chatList} 
                 currentSessionId={sessionId} 
@@ -147,54 +146,74 @@ function Chat() {
                 onDeleteChat={handleDeleteChat}
             /> 
             
-            <div className="chat-interface" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#f9f9f9' }}>
+            {/* 2. Main Chat Interface (flex-grow-1 takes remaining space) */}
+            <div className="chat-interface d-flex flex-column flex-grow-1 bg-light">
                 
                 {sessionId ? (
                     <>
-                        <h2 style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                        {/* Header: padding, border bottom */}
+                        <h2 className="p-3 border-bottom fs-5 text-dark">
                             {chatList.find(c => c.sessionId === sessionId)?.title || "AI Chat"}
                         </h2>
                         
-                        <div className="messages-area" style={{ flexGrow: 1, overflowY: 'auto', padding: '15px' }}>
+                        {/* Message Display Area: flex-grow-1, overflow scroll, padding */}
+                        <div className="messages-area flex-grow-1 overflow-auto p-3">
                             {messages.map((message, index) => (
-                                <div key={index} style={{ 
-                                    margin: '10px 0', 
-                                    padding: '8px 12px', 
-                                    borderRadius: '15px', 
-                                    backgroundColor: message.role === 'user' ? '#dcf8c6' : '#f0f0f0',
-                                    maxWidth: '70%',
-                                    marginLeft: message.role === 'user' ? 'auto' : '0',
-                                    marginRight: message.role === 'model' ? 'auto' : '0',
-                                }}>
-                                    <strong style={{ textTransform: 'capitalize' }}>{message.role}:</strong>
-                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.content}</p>
-                                    {message.isStreaming && <span className="cursor-blink">|</span>}
+                                <div 
+                                    key={index} 
+                                    // Chat bubble alignment and spacing
+                                    className={`d-flex ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'} mb-3`}
+                                >
+                                    <div 
+                                        // Chat bubble styling
+                                        className={`p-3 rounded-4 ${
+                                            message.role === 'user' 
+                                            ? 'bg-success-subtle text-dark border border-success-subtle' 
+                                            : 'bg-white text-dark border border-light-subtle'
+                                        }`}
+                                        style={{ maxWidth: '70%' }}
+                                    >
+                                        <strong className="text-capitalize">{message.role}:</strong>
+                                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                                            {message.content}
+                                        </p>
+                                        {message.isStreaming && <span className="cursor-blink">|</span>}
+                                    </div>
                                 </div>
                             ))}
                             <div ref={messagesEndRef} />
                         </div>
 
-                        <form onSubmit={handleSubmit} style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', backgroundColor: 'white' }}>
+                        {/* Input Form: padding, border top, d-flex, background white */}
+                        <form onSubmit={handleSubmit} className="p-3 border-top d-flex bg-white">
                             <input
                                 type="text"
                                 value={currentPrompt}
                                 onChange={(e) => setCurrentPrompt(e.target.value)}
                                 placeholder={isLoading ? 'Waiting for response...' : 'Type your message...'}
                                 disabled={isLoading || !sessionId}
-                                style={{ flexGrow: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', marginRight: '10px' }}
+                                // flex-grow-1, padding, rounded, border, margin right
+                                className="form-control flex-grow-1 me-2"
                             />
-                            <button type="submit" disabled={isLoading || !sessionId} style={{ padding: '10px 20px', borderRadius: '5px' }}>
+                            <button 
+                                type="submit" 
+                                disabled={isLoading || !sessionId} 
+                                // Primary button styling
+                                className="btn btn-primary"
+                            >
                                 {isLoading ? 'Sending...' : 'Send'}
                             </button>
                         </form>
                     </>
                 ) : (
-                    <div style={{ flexGrow: 1, display: 'grid', placeItems: 'center', color: '#888' }}>
-                        <h2>👋 Select a Conversation or Start a New Chat</h2>
+                    // Default view when no chat is selected (d-grid, place-items-center)
+                    <div className="d-flex flex-column flex-grow-1 justify-content-center align-items-center text-secondary">
+                        <h2 className="fs-4 text-center">👋 Select a Conversation or Start a New Chat</h2>
                     </div>
                 )}
                 
-                {error && <p style={{ color: 'red', textAlign: 'center', padding: '10px' }}>Error: {error}</p>}
+                {/* Error Display */}
+                {error && <p className="text-danger text-center p-2 small">{error}</p>}
             </div>
         </div>
     );
