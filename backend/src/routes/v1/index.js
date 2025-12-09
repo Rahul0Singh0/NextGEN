@@ -4,7 +4,7 @@ import aiRoute from "./aiRoute.js";
 
 const router = express.Router();
 
-router.use('/message', messageRoute);
+router.use("/message", messageRoute);
 router.use("/generate", aiRoute);
 
 export default router;

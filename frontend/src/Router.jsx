@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import Dummy from "./components/Dummy";
 import Generator from "./components/Generator";
+import Chat from "./components/Chat";
 
 export const Router = () => {
     return (
@@ -11,7 +12,7 @@ export const Router = () => {
             </nav>
             <Routes>
                 <Route path="/message" element={<Dummy />} />  
-                <Route path="/nextgen" element={<Generator />} />      
+                <Route path="/nextgen" element={<Chat />} />      
             </Routes>
         </BrowserRouter>
     );

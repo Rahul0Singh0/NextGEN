@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { MONGO_URI } from './serverConfig.js';
 
 const connectDB = async () => {
+    console.log("Attempting to connect to MongoDB...");
     try {
         if (!MONGO_URI) {
             throw new Error("MONGO_URI is not defined in environment variables");
