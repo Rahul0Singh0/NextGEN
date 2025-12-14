@@ -1,43 +1,65 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
+import { aiResponse, streamAiResponse } from '../apis/generate.js';
 
 function Generator() {
-  // State variables for form and application status
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Async function to handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default browser refresh
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault(); 
     
-    // Clear previous results and errors
-    setResult('');
+  //   setResult('');
+  //   setError(null);
+
+  //   if (!prompt.trim()) {
+  //     setError('Please enter a prompt.');
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     const response = await streamAiResponse({ prompt });
+
+  //     setResult(response.generatedText);
+  //   } catch (err) {
+  //     console.error('API Error:', err);
+  //     setError('Failed to generate content. Please check the backend server.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setResult(''); // Clear previous result
     setError(null);
+    setIsLoading(true);
 
     if (!prompt.trim()) {
       setError('Please enter a prompt.');
+      setIsLoading(false);
       return;
     }
-
-    setIsLoading(true);
+    
+    // Function to append new chunks to the result state
+    const handleChunk = (chunk) => {
+      setResult(prev => prev + chunk);
+    };
 
     try {
-      // 1. Send POST request to the backend API endpoint
-      // NOTE: We use '/api/generate' and rely on the proxy setting 
-      // in package.json to route it to http://localhost:5000.
-      const response = await axios.post('/api/generate', { prompt });
-
-      // 2. Update state with the AI's generated content
-      setResult(response.data.generatedText);
-
-    } catch (err) {
-      // 3. Handle any errors from the request or the server
-      console.error('API Error:', err);
-      setError('Failed to generate content. Please check the backend server.');
+      await streamAiResponse(
+        { prompt }, 
+        handleChunk, 
+        (errorMessage) => setError(errorMessage) // Handle errors passed from API helper
+      );
+    } catch (error) {
+        console.log('API Error:', error);
+        // Errors caught here are network errors or errors thrown in the helper
+        setError("Network error or failed to start stream.");
     } finally {
-      // 4. Reset loading state
       setIsLoading(false);
     }
   };
@@ -61,7 +83,6 @@ function Generator() {
         </button>
       </form>
 
-      {/* Conditional Rendering of Results and Errors */}
       {error && <p className="error-message">Error: {error}</p>}
       
       {result && (

@@ -1,11 +1,13 @@
-import { Router } from "./Router";
+import { BrowserRouter } from "react-router-dom"; 
+import { RouterContent } from "./Router"; 
 
 function App() {
   return (
-    <>
-      <h1>Start development</h1>
-      <Router />
-    </>
+    <BrowserRouter>
+        <div className="d-flex flex-column vh-100 bg-white">
+            <RouterContent />
+        </div>
+    </BrowserRouter>
   );
 }
 

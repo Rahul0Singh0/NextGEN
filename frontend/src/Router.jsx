@@ -1,12 +1,13 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Dummy from "./components/Dummy";
+import { Route, Routes } from "react-router-dom";
+import Chat from "./components/Chat";
 
-export const Router = () => {
+export const RouterContent = () => {
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/message" element={<Dummy />} />      
-            </Routes>
-        </BrowserRouter>
+        <Routes>
+            <Route path="/" element={
+                <Chat />
+            } />
+            <Route path="/nextgen" element={<Chat />} /> 
+        </Routes>
     );
 }

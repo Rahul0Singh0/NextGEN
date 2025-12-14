@@ -8,7 +8,7 @@ export default function Dummy() {
         try {
             const response = await pingMessage();
             console.log('Response from backend:', response);
-            setMessage(response);
+            setMessage(response.message);
         } catch (error) {
             console.error('Error fetching message:', error);
         }   
