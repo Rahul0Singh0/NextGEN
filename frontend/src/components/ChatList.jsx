@@ -1,54 +1,129 @@
-function ChatList({ sessions, currentSessionId, onSelectChat, onDeleteChat }) {
-    // Note: We use the 'className' attribute for Bootstrap classes.
-    return (
-        // Container: Set width, padding, flex column, and border (using Bootstrap's border utilities)
-        <div className="d-flex flex-column p-3 border-end" style={{ width: '250px', height: '100vh' }}>
-            <h3 className="mb-3">📝 Conversations</h3>
+import React, { useState } from 'react';
+import { renameChatSession } from '../apis/chatApi'; 
+
+function ChatList({ sessions, currentSessionId, onSelectChat, onDeleteChat, loadChatList }) {
+    
+    const [renamingId, setRenamingId] = useState(null);
+    const [newTitle, setNewTitle] = useState('');
+
+    const startRename = (sessionId, currentTitle, e) => {
+        e.stopPropagation(); 
+        setRenamingId(sessionId);
+        setNewTitle(currentTitle);
+    };
+
+    const handleRenameSubmit = async (e) => {
+        e.preventDefault();
+        
+        const trimmedTitle = newTitle.trim();
+        if (!trimmedTitle || !renamingId) return;
+
+        try {
+            await renameChatSession(renamingId, trimmedTitle); 
             
-            {/* Start New Chat Button */}
+            if (loadChatList) {
+                loadChatList(); 
+            }
+
+        } catch (error) {
+            console.error("Failed to rename chat:", error);
+            alert("Failed to rename chat session.");
+        } finally {
+            setRenamingId(null);
+            setNewTitle('');
+        }
+    };
+
+    const handleRenameKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            setRenamingId(null);
+            setNewTitle('');
+        }
+    }
+
+    return (
+        <div className="d-flex flex-column p-3 bg-dark text-white border-end border-secondary" style={{ width: '280px', height: '100vh' }}>
+            
+            <div className="d-flex align-items-center mb-4 pb-2 border-bottom border-secondary">
+                <h3 className="mb-0 text-warning fs-5">✨ NextGen AI</h3>
+            </div>
+            
             <button 
                 onClick={() => onSelectChat('new')} 
-                // Bootstrap classes for primary button, full width, margin bottom
-                className="btn btn-primary mb-3 w-100"
+                className="btn btn-warning mb-4 w-100 fw-bold rounded-pill"
             >
-                + Start New Chat
+                + New Chat
             </button>
 
-            {/* Scrollable List Area */}
+            <div className="text-muted small mb-2 text-uppercase">
+                 Conversations
+             </div>
+
             <div className="overflow-auto flex-grow-1">
                 {sessions.map((session) => (
                     <div
                         key={session.sessionId}
-                        onClick={() => onSelectChat(session.sessionId)}
-                        // List Item Styling: 
-                        // d-flex (flex), align-items-center, justify-content-between
-                        // p-2 (padding), mb-2 (margin bottom), rounded-3 (rounded corners)
-                        // cursor: pointer is needed as a custom style since Bootstrap doesn't have a direct class for this
-                        className={`d-flex align-items-center justify-content-between p-2 mb-2 rounded-3 text-break ${
-                            // Conditional Class for Active Session
+                        onClick={renamingId === session.sessionId ? null : () => onSelectChat(session.sessionId)}
+                        className={`d-flex flex-column p-2 mb-2 rounded-3 text-break shadow-sm ${
                             session.sessionId === currentSessionId 
-                                ? 'bg-primary-subtle border border-primary text-primary' // Active style
-                                : 'text-dark border border-light-subtle' // Default style
+                                ? 'bg-warning text-dark fw-bold' 
+                                : 'text-light border border-secondary-subtle'
                         }`}
-                        style={{ cursor: 'pointer', fontSize: '0.9em' }}
+                        style={{ cursor: renamingId === session.sessionId ? 'default' : 'pointer', fontSize: '0.9em', transition: 'background-color 0.2s' }}
                     >
-                        {/* Title Span */}
-                        <span className="me-2" title={session.title}>
-                            {session.title}
-                        </span>
-                        
-                        {/* Delete Button */}
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation(); // Prevent opening the chat when deleting
-                                onDeleteChat(session.sessionId);
-                            }}
-                            // Use Bootstrap text-danger for color and background: none for the clear button look
-                            className="btn btn-sm btn-link p-0 text-danger ms-2"
-                            title="Delete Chat"
-                        >
-                            🗑️
-                        </button>
+                        {renamingId === session.sessionId ? (
+                            <form onSubmit={handleRenameSubmit} className="d-flex align-items-center">
+                                <input
+                                    type="text"
+                                    value={newTitle}
+                                    onChange={(e) => setNewTitle(e.target.value)}
+                                    onKeyDown={handleRenameKeyDown}
+                                    className="form-control form-control-sm me-2"
+                                    autoFocus
+                                    onFocus={(e) => e.target.select()}
+                                />
+                                <button type="submit" className="btn btn-sm btn-success p-1">
+                                    💾
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setRenamingId(null)}
+                                    className="btn btn-sm btn-outline-danger p-1 ms-1"
+                                >
+                                    ❌
+                                </button>
+                            </form>
+                        ) : (
+                            <>
+                                <div className="d-flex justify-content-between align-items-center w-100">
+                                    <span className="me-2 text-truncate" title={session.title} style={{ maxWidth: '60%' }}>
+                                        {session.title}
+                                    </span>
+
+                                    <div className="d-flex align-items-center">
+                                        
+                                        <button 
+                                            onClick={(e) => startRename(session.sessionId, session.title, e)}
+                                            className={`btn btn-sm btn-link p-0 me-2 ${session.sessionId === currentSessionId ? 'text-dark' : 'text-info'}`}
+                                            title="Rename Chat"
+                                        >
+                                            ✏️
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); 
+                                                onDeleteChat(session.sessionId);
+                                            }}
+                                            className={`btn btn-sm btn-link p-0 ${session.sessionId === currentSessionId ? 'text-dark' : 'text-danger'}`}
+                                            title="Delete Chat"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 ))}
             </div>

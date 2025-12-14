@@ -3,11 +3,6 @@ import Chat from '../models/Chat.js';
 
 const ai = new GoogleGenAI({}); 
 
-/**
- * Converts Mongoose messages into the format required by the Gemini Chat service.
- * @param {Array<Object>} messages 
- * @returns {Array<Object>} Gemini history format
- */
 const formatHistoryForGemini = (messages) => {
     return messages.map(msg => ({
         role: msg.role,
@@ -15,9 +10,7 @@ const formatHistoryForGemini = (messages) => {
     }));
 };
 
-/**
- * Handles the streaming chat request, managing history persistence.
- */
+
 export const streamChatContent = async (req, res) => {
     // 1. Basic Validation
     const { prompt, sessionId } = req.body; 
@@ -84,9 +77,7 @@ export const streamChatContent = async (req, res) => {
     }
 };
 
-/**
- * Deletes a chat session by its ID.
- */
+
 export const deleteChatSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -104,9 +95,7 @@ export const deleteChatSession = async (req, res) => {
     }
 };
 
-/**
- * Fetches the existing message history for a session ID.
- */
+
 export const getChatHistory = async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -125,38 +114,25 @@ export const getChatHistory = async (req, res) => {
     }
 };
 
-// backend/controllers/chatController.js (Add this function)
-
-/**
- * Fetches a list of all chat sessions for the sidebar preview.
- * For simplicity, this currently returns a list of *all* sessions in the DB.
- * In a real application, you would filter by user ID.
- */
 export const getChatSessions = async (req, res) => {
     try {
-        // Find all chat documents
         const sessions = await Chat.find({})
-            // 1. FIX: Include 'updatedAt' in the selected fields
             .select('sessionId messages createdAt updatedAt') 
-            // 2. Sort by most recently updated (descending)
             .sort({ updatedAt: -1 })
-            // Limit the result size for performance
             .limit(50); 
 
-        // Map the results to a clean format for the frontend
         const previewList = sessions.map(session => {
-            // Get the first user message to use as the title/preview
             const firstMessage = session.messages.find(msg => msg.role === 'user');
             
             return {
                 sessionId: session.sessionId,
-                // Use the first user message or a default title
-                title: firstMessage 
-                    ? firstMessage.content.substring(0, 30) + (firstMessage.content.length > 30 ? '...' : '') 
-                    : 'New Chat',
+                title: session.title 
+                    ? session.title
+                    : firstMessage 
+                        ? firstMessage.content.substring(0, 30) + '...' 
+                        : 'New Chat',
                 createdAt: session.createdAt,
-                // Optional: Include updatedAt in the returned data as well
-                updatedAt: session.updatedAt, 
+                updatedAt: session.updatedAt,
             };
         });
 
@@ -164,5 +140,17 @@ export const getChatSessions = async (req, res) => {
     } catch (error) {
         console.error("Error fetching chat sessions:", error);
         res.status(500).json({ error: "Server error fetching chat list." });
+    }
+};
+
+export const renameChatController = async (req, res) => {
+    const { sessionId } = req.params;
+    const { title } = req.body;
+
+    try {
+        await Chat.updateOne({ sessionId }, { $set: { title: title } }); 
+        res.status(200).json({ message: 'Chat renamed successfully.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update chat title.' });
     }
 };
