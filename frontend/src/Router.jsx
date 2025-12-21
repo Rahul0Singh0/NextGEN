@@ -1,13 +1,20 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 import Chat from "./components/Chat";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const RouterContent = () => {
     return (
         <Routes>
-            <Route path="/" element={
-                <Chat />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/nextgen" element={
+                <ProtectedRoute>
+                    <Chat />
+                </ProtectedRoute>
             } />
-            <Route path="/nextgen" element={<Chat />} /> 
+            <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
     );
 }

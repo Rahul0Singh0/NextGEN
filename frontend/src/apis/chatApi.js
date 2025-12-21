@@ -1,16 +1,37 @@
 import axios from "axios";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL_V2;
-const API_BASE = `${BACKEND_BASE_URL}/chat`; 
-console.log("Chat API Base URL:", API_BASE);
+const API_BASE = `${BACKEND_BASE_URL}/chat`;
+
+axios.interceptors.request.use(
+    (config) => {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        if (userInfo && userInfo.token) {
+            config.headers.Authorization = `Bearer ${userInfo.token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+const getAuthToken = () => {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    return userInfo ? userInfo.token : null;
+};
 
 export const streamChatContent = async ({ prompt, sessionId }, onChunkReceived, onError) => {
     try {
         const fullUrl = `${API_BASE}/stream`;
+        const token = getAuthToken();
         
         const response = await fetch(fullUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ prompt, sessionId }), 
         });
 
