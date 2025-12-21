@@ -17,6 +17,12 @@ const MessageSchema = new mongoose.Schema({
 }, { _id: false });
 
 const ChatSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+    },
+
     sessionId: {
         type: String,
         required: true,
