@@ -12,7 +12,6 @@ const formatHistoryForGemini = (messages) => {
 
 
 export const streamChatContent = async (req, res) => {
-    // 1. Basic Validation
     const { prompt, sessionId } = req.body; 
 
     if (!process.env.GEMINI_API_KEY) {
@@ -23,22 +22,16 @@ export const streamChatContent = async (req, res) => {
     }
 
     try {
-        // 2. Load History and Setup
         let chatDocument = await Chat.findOne({ sessionId });
         if (!chatDocument) {
-            // Create a new chat session if none exists
             chatDocument = await Chat.create({ sessionId, messages: [] });
         }
         
-        // Add the user's message to the database object immediately
         chatDocument.messages.push({ role: 'user', content: prompt });
         await chatDocument.save();
 
-        // 3. Initialize Gemini Chat Session with History
-        // Exclude the user's latest prompt from the history array passed to 'history'
-        // because the user's latest prompt is passed separately in sendMessageStream.
         const historyForGemini = formatHistoryForGemini(
-            chatDocument.messages.slice(0, -1) // All messages EXCEPT the last user prompt
+            chatDocument.messages.slice(0, -1)
         );
 
         const chat = ai.chats.create({
@@ -46,11 +39,9 @@ export const streamChatContent = async (req, res) => {
             history: historyForGemini
         });
 
-        // 4. Stream the Response
         res.setHeader('Content-Type', 'text/plain');
         res.setHeader('Transfer-Encoding', 'chunked');
         
-        // Use the chat session to send the message stream
         const responseStream = await chat.sendMessageStream({ message: prompt });
         let modelResponse = ''; 
 
@@ -59,9 +50,8 @@ export const streamChatContent = async (req, res) => {
             modelResponse += chunk.text;
         }
 
-        res.end(); // Close the connection
+        res.end();
 
-        // 5. Save the model's full response
         if (modelResponse) {
             chatDocument.messages.push({ role: 'model', content: modelResponse });
             await chatDocument.save();
@@ -103,7 +93,6 @@ export const getChatHistory = async (req, res) => {
         const chatDocument = await Chat.findOne({ sessionId });
 
         if (!chatDocument) {
-            // Return an empty array for a brand new session
             return res.status(200).json({ messages: [] });
         }
 
@@ -116,10 +105,9 @@ export const getChatHistory = async (req, res) => {
 
 export const getChatSessions = async (req, res) => {
     try {
-        const sessions = await Chat.find({})
-            .select('sessionId messages createdAt updatedAt') 
-            .sort({ updatedAt: -1 })
-            .limit(50); 
+        const sessions = await Chat.find({ user: req.user._id }) 
+            .select('sessionId messages title createdAt updatedAt')
+            .sort({ updatedAt: -1 });
 
         const previewList = sessions.map(session => {
             const firstMessage = session.messages.find(msg => msg.role === 'user');
